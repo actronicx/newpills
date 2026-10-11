@@ -103,13 +103,15 @@ public class AlarmActivity extends Activity {
         pill.setGravity(Gravity.CENTER);
         pill.setPadding(0, 0, 0, dp(32));
 
-        Button open = button("Ferma e apri l'app", Color.WHITE, Color.parseColor("#0F6B54"));
-        open.setOnClickListener(v -> {
-            if (id != null) AlarmScheduler.cancelNotification(this, id);
-            Intent i = new Intent(this, MainActivity.class);
-            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            startActivity(i);
-            finish();
+        // Assumi: registra l'assunzione senza sbloccare il telefono e senza aprire l'app
+        Button take = button("Assumi", Color.WHITE, Color.parseColor("#0F6B54"));
+        take.setTextSize(24);
+        take.setOnClickListener(v -> {
+            if (id != null) {
+                AlarmScheduler.cancelNotification(this, id);
+                if (!"prova".equals(id)) AlarmScheduler.takeNow(this, id);
+            }
+            showDone();
         });
 
         Button later = button("Posticipa " + AlarmScheduler.SNOOZE_MINUTES + " minuti", Color.parseColor("#1F4A3D"), Color.WHITE);
@@ -121,12 +123,50 @@ public class AlarmActivity extends Activity {
             finish();
         });
 
+        Button open = button("Ferma e apri l'app", Color.TRANSPARENT, Color.parseColor("#C4E6D9"));
+        open.setTextSize(16);
+        open.setOnClickListener(v -> {
+            if (id != null) AlarmScheduler.cancelNotification(this, id);
+            Intent i = new Intent(this, MainActivity.class);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(i);
+            finish();
+        });
+
         root.addView(time);
         root.addView(label);
         root.addView(pill);
-        root.addView(open);
+        root.addView(take);
         root.addView(later);
+        root.addView(open);
         setContentView(root);
+    }
+
+    /** Conferma breve, poi la schermata si chiude e il telefono resta bloccato. */
+    private void showDone() {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setGravity(Gravity.CENTER);
+        root.setBackgroundColor(Color.parseColor("#0F6B54"));
+        root.setPadding(dp(28), dp(48), dp(28), dp(48));
+
+        TextView check = new TextView(this);
+        check.setText("✓");
+        check.setTextColor(Color.WHITE);
+        check.setTextSize(96);
+        check.setGravity(Gravity.CENTER);
+
+        TextView msg = new TextView(this);
+        msg.setText(name + "\nassunta alle " + new SimpleDateFormat("HH:mm", Locale.ITALY).format(new Date()));
+        msg.setTextColor(Color.WHITE);
+        msg.setTextSize(24);
+        msg.setTypeface(Typeface.DEFAULT_BOLD);
+        msg.setGravity(Gravity.CENTER);
+
+        root.addView(check);
+        root.addView(msg);
+        setContentView(root);
+        root.postDelayed(() -> finish(), 2000);
     }
 
     @Override

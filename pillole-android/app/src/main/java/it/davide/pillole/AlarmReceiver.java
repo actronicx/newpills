@@ -13,6 +13,11 @@ public class AlarmReceiver extends BroadcastReceiver {
         if (id == null) return;
         if (name == null) name = "Pillola";
 
+        if (AlarmScheduler.ACTION_TAKE.equals(action)) {
+            AlarmScheduler.cancelNotification(c, id);
+            if (!"prova".equals(id)) AlarmScheduler.takeNow(c, id);
+            return;
+        }
         if (AlarmScheduler.ACTION_STOP.equals(action)) {
             AlarmScheduler.cancelNotification(c, id);
             return;

@@ -12,7 +12,7 @@
 :root{
   --bg:#f3f6f5; --surface:#ffffff; --fg:#14211d; --muted:#5b6b66; --line:#d9e2df;
   --accent:#0f6b54; --accent-soft:#e1f0eb; --on-accent:#ffffff;
-  --late:#b3261e; --late-soft:#fbe9e7; --done:#6d7b77; --done-soft:#eef1f0; --warn:#8a5a00; --warn-soft:#fdf3dc;
+  --late:#b3261e; --late-soft:#fbe9e7; --done:#6d7b77; --done-soft:#eef1f0; --done-mid:#dde3e1; --warn:#8a5a00; --warn-soft:#fdf3dc;
   /* colori predefiniti per categoria: riquadro, sfondo nome, nome, orario */
   --k1-card:#e6f4ef; --k1-namebg:#c4e6d9; --k1-name:#0d4a3a; --k1-time:#0f6b54;
   --k2-card:#e7effa; --k2-namebg:#c9dbf3; --k2-name:#183c6b; --k2-time:#1f4f8f;
@@ -25,7 +25,7 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0f1715; --surface:#17221f; --fg:#e6efec; --muted:#93a39e; --line:#2a3834;
   --accent:#5fcfae; --accent-soft:#1d3a32; --on-accent:#08201a;
-  --late:#ff8a80; --late-soft:#3a1c1a; --done:#8e9c98; --done-soft:#1c2624; --warn:#f2c46b; --warn-soft:#3a2f17;
+  --late:#ff8a80; --late-soft:#3a1c1a; --done:#8e9c98; --done-soft:#1c2624; --done-mid:#2c3734; --warn:#f2c46b; --warn-soft:#3a2f17;
   --k1-card:#142a24; --k1-namebg:#1f4a3d; --k1-name:#c8f0e2; --k1-time:#6fd8b6;
   --k2-card:#15212f; --k2-namebg:#213a5a; --k2-name:#cfe0f7; --k2-time:#8ab6f0;
   --k3-card:#2a2214; --k3-namebg:#4a3a1c; --k3-name:#f6e2b8; --k3-time:#f0c46b;
@@ -34,7 +34,7 @@
 :root[data-theme="dark"]{
   --bg:#0f1715; --surface:#17221f; --fg:#e6efec; --muted:#93a39e; --line:#2a3834;
   --accent:#5fcfae; --accent-soft:#1d3a32; --on-accent:#08201a;
-  --late:#ff8a80; --late-soft:#3a1c1a; --done:#8e9c98; --done-soft:#1c2624; --warn:#f2c46b; --warn-soft:#3a2f17;
+  --late:#ff8a80; --late-soft:#3a1c1a; --done:#8e9c98; --done-soft:#1c2624; --done-mid:#2c3734; --warn:#f2c46b; --warn-soft:#3a2f17;
   --k1-card:#142a24; --k1-namebg:#1f4a3d; --k1-name:#c8f0e2; --k1-time:#6fd8b6;
   --k2-card:#15212f; --k2-namebg:#213a5a; --k2-name:#cfe0f7; --k2-time:#8ab6f0;
   --k3-card:#2a2214; --k3-namebg:#4a3a1c; --k3-name:#f6e2b8; --k3-time:#f0c46b;
@@ -96,7 +96,7 @@ ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
 .pill.cat-4{--c-card:var(--k4-card);--c-namebg:var(--k4-namebg);--c-name:var(--k4-name);--c-time:var(--k4-time);--c-border:var(--k4-namebg)}
 .pill.cat-5{--c-card:var(--k5-card);--c-namebg:var(--k5-namebg);--c-name:var(--k5-name);--c-time:var(--k5-time);--c-border:var(--k5-namebg)}
 li.pill{border:2px solid var(--c-border, var(--line))}
-.pill.is-done{opacity:.8}
+.pill.is-done{--c-card:var(--done-soft)!important;--c-namebg:var(--done-mid)!important;--c-name:var(--done)!important;--c-time:var(--done)!important;--c-border:var(--done-mid)!important}
 .cattabs{display:flex;flex-wrap:wrap;gap:8px}
 .cattab{border:2px solid transparent;border-radius:999px;padding:6px 14px;font-weight:700;cursor:pointer;background:var(--c-card);color:var(--c-name)}
 .cattab[aria-pressed="true"]{border-color:var(--c-time)}
@@ -499,17 +499,38 @@ setInterval(tick, 15000);
 
 // ===== SVEGLIE ANDROID =====
 function nativeStatus() { try { return AndroidAlarm.status(); } catch (e) { return 'ok'; } }
+// Assunzioni fatte dalla schermata della sveglia (anche a telefono bloccato e app chiusa)
+function applyPending() {
+  if (!window.AndroidAlarm) return false;
+  let changed = false;
+  try {
+    const list = JSON.parse(AndroidAlarm.takePending() || '[]');
+    list.forEach(x => {
+      if (x.date !== state.day) return;
+      const p = state.pills.find(p => String(p.id) === String(x.id));
+      if (!p || p.taken) return;
+      p.taken = true; p.takenTime = x.time; p.dueTime = x.due;
+      ringing = ringing.filter(r => r !== p.id);
+      changed = true;
+    });
+  } catch (e) {}
+  if (changed) { if (!ringing.length) stopSound(); save(); render(); }
+  return changed;
+}
 function syncNative() {
   if (!window.AndroidAlarm) return;
   try {
+    if (AndroidAlarm.hasPending() && applyPending()) return; // applyPending salva e risincronizza
     const t = computeTimes(state.pills, state.categories);
     const real = state.pills.filter(p => !p.example);
-    const today = {};
-    real.forEach(p => { if (!p.taken) today[String(p.id)] = t[p.id]; });
+    const today = {}, taken = {};
+    real.forEach(p => { if (p.taken) taken[String(p.id)] = toMin(p.takenTime); else today[String(p.id)] = t[p.id]; });
+    const ivOf = name => { const c = state.categories.find(c => c.name === name); return c ? Number(c.interval) || 0 : 0; };
     AndroidAlarm.setPlan(JSON.stringify({
       date: state.day,
       today,
-      base: real.map(p => ({ id: String(p.id), name: p.name, minute: toMin(p.scheduledTime) })),
+      taken,
+      base: real.map(p => ({ id: String(p.id), name: p.name, minute: toMin(p.scheduledTime), cat: p.category, iv: ivOf(p.category) })),
     }));
   } catch (e) {}
 }
@@ -526,7 +547,11 @@ if (window.AndroidAlarm) {
   document.getElementById('native-test').addEventListener('click', e => { AndroidAlarm.test(); e.target.textContent = 'Sveglia di prova tra 10 secondi: blocca pure il telefono'; });
   document.getElementById('native-batt').addEventListener('click', () => AndroidAlarm.openSettings('batteria'));
 }
-window.onNativeResume = () => { renderNative(); tick(); };
+window.onNativeResume = () => {
+  const d = dayKey(new Date());
+  if (state.day !== d) { state = dailyReset(state, d); stopAlarm(); save(); }
+  applyPending(); renderNative(); tick();
+};
 renderNative();
 syncNative();
 

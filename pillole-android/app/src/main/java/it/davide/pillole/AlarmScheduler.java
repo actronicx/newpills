@@ -17,9 +17,15 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Programma le sveglie di sistema per ogni pillola.
@@ -46,10 +52,138 @@ public final class AlarmScheduler {
     static final String ACTION_FIRE = "it.davide.pillole.SUONA";
     static final String ACTION_STOP = "it.davide.pillole.FERMA";
     static final String ACTION_SNOOZE = "it.davide.pillole.POSTICIPA";
+    static final String ACTION_TAKE = "it.davide.pillole.ASSUMI";
+    static final String KEY_PENDING = "assunte_da_sveglia";
 
-    static final int SNOOZE_MINUTES = 10;
+    static final int SNOOZE_MINUTES = 5;
 
     private AlarmScheduler() {}
+
+    // ===== Assunzione direttamente dalla sveglia (senza aprire l'app) =====
+
+    /**
+     * Stesso calcolo della pagina (computeTimes): per ogni categoria, in ordine di orario programmato,
+     * l'ultima pillola assunta fa da ancora; le successive vanno ad ancora + k*intervallo,
+     * oppure (intervallo 0) slittano dello stesso ritardo. Restituisce solo le pillole non assunte.
+     */
+    static Map<String, Integer> computeTimes(List<String> ids, Map<String, Integer> base,
+                                             Map<String, String> cat, Map<String, Double> ivHours,
+                                             Map<String, Integer> taken) {
+        Map<String, List<String>> byCat = new LinkedHashMap<>();
+        for (String id : ids) {
+            String k = cat.containsKey(id) ? cat.get(id) : "";
+            if (!byCat.containsKey(k)) byCat.put(k, new ArrayList<>());
+            byCat.get(k).add(id);
+        }
+        Map<String, Integer> out = new HashMap<>();
+        for (List<String> list : byCat.values()) {
+            list.sort((a, b) -> {
+                int d = Integer.compare(base.get(a), base.get(b));
+                if (d != 0) return d;
+                try { return Long.compare(Long.parseLong(a), Long.parseLong(b)); }
+                catch (NumberFormatException e) { return a.compareTo(b); }
+            });
+            Integer anchor = null;
+            int delay = 0, k = 0;
+            for (String id : list) {
+                int s = base.get(id);
+                Double ivh = ivHours.get(id);
+                int iv = (int) Math.round((ivh == null ? 0 : ivh) * 60);
+                if (taken.containsKey(id)) {
+                    anchor = taken.get(id); delay = anchor - s; k = 0;
+                    continue;
+                }
+                if (anchor == null) { out.put(id, s); continue; }
+                k++;
+                out.put(id, iv > 0 ? anchor + k * iv : s + delay);
+            }
+        }
+        return out;
+    }
+
+    static String hhmm(int minute) {
+        int m = ((minute % 1440) + 1440) % 1440;
+        return String.format(Locale.US, "%02d:%02d", m / 60, m % 60);
+    }
+
+    /** Segna la pillola come assunta adesso, ricalcola le sveglie e lascia il dato all'app. */
+    public static synchronized void takeNow(Context c, String id) {
+        SharedPreferences p = prefs(c);
+        Calendar now = Calendar.getInstance();
+        int nowMin = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
+        String todayDate = today();
+        try {
+            JSONObject plan = new JSONObject(p.getString(KEY_PLAN, "{}"));
+            JSONArray baseArr = plan.optJSONArray("base");
+            if (baseArr == null) return;
+
+            List<String> ids = new ArrayList<>();
+            Map<String, Integer> base = new HashMap<>();
+            Map<String, String> cat = new HashMap<>();
+            Map<String, Double> iv = new HashMap<>();
+            for (int i = 0; i < baseArr.length(); i++) {
+                JSONObject b = baseArr.getJSONObject(i);
+                String bid = b.getString("id");
+                ids.add(bid);
+                base.put(bid, b.getInt("minute"));
+                cat.put(bid, b.optString("cat", ""));
+                iv.put(bid, b.optDouble("iv", 0));
+            }
+            if (!base.containsKey(id)) return;
+
+            Map<String, Integer> taken = new HashMap<>();
+            JSONObject todayMap = plan.optJSONObject("today");
+            boolean sameDay = todayDate.equals(plan.optString("date", ""));
+            if (sameDay) {
+                JSONObject t = plan.optJSONObject("taken");
+                if (t != null) {
+                    Iterator<String> it = t.keys();
+                    while (it.hasNext()) { String k = it.next(); taken.put(k, t.getInt(k)); }
+                }
+            }
+            if (taken.containsKey(id)) return; // già assunta
+
+            int due = (sameDay && todayMap != null && todayMap.has(id)) ? todayMap.getInt(id) : base.get(id);
+            taken.put(id, nowMin);
+
+            Map<String, Integer> times = computeTimes(ids, base, cat, iv, taken);
+            JSONObject newToday = new JSONObject();
+            for (Map.Entry<String, Integer> e : times.entrySet()) newToday.put(e.getKey(), e.getValue());
+            JSONObject newTaken = new JSONObject();
+            for (Map.Entry<String, Integer> e : taken.entrySet()) newTaken.put(e.getKey(), e.getValue());
+            plan.put("date", todayDate);
+            plan.put("today", newToday);
+            plan.put("taken", newTaken);
+
+            JSONArray pending = new JSONArray(p.getString(KEY_PENDING, "[]"));
+            JSONObject rec = new JSONObject();
+            rec.put("id", id);
+            rec.put("date", todayDate);
+            rec.put("time", hhmm(nowMin));
+            rec.put("due", hhmm(due));
+            pending.put(rec);
+
+            p.edit().putString(KEY_PLAN, plan.toString()).putString(KEY_PENDING, pending.toString()).commit();
+        } catch (Exception ignored) { }
+
+        AlarmManager am = c.getSystemService(AlarmManager.class);
+        if (am != null) am.cancel(firePending(c, id, "", true)); // annulla un eventuale posticipo
+        cancelNotification(c, id);
+        scheduleAll(c);
+    }
+
+    /** Restituisce all'app le assunzioni fatte dalla sveglia e le cancella. */
+    public static synchronized String takePending(Context c) {
+        SharedPreferences p = prefs(c);
+        String s = p.getString(KEY_PENDING, "[]");
+        p.edit().remove(KEY_PENDING).commit();
+        return s;
+    }
+
+    public static boolean hasPending(Context c) {
+        String s = prefs(c).getString(KEY_PENDING, "[]");
+        return s.length() > 2;
+    }
 
     static SharedPreferences prefs(Context c) {
         return c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
@@ -238,8 +372,9 @@ public final class AlarmScheduler {
                 .setContentIntent(fullPi)
                 .setOngoing(true)
                 .setAutoCancel(false)
-                .addAction(new Notification.Action.Builder(null, "Ferma", actionPending(c, ACTION_STOP, id, name)).build())
+                .addAction(new Notification.Action.Builder(null, "Assumi", actionPending(c, ACTION_TAKE, id, name)).build())
                 .addAction(new Notification.Action.Builder(null, "Posticipa " + SNOOZE_MINUTES + " min", actionPending(c, ACTION_SNOOZE, id, name)).build())
+                .addAction(new Notification.Action.Builder(null, "Ferma", actionPending(c, ACTION_STOP, id, name)).build())
                 .build();
         n.flags |= Notification.FLAG_INSISTENT; // il suono si ripete finché non la fermi
         nm.notify(notifId(id), n);

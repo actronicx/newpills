@@ -25,6 +25,17 @@ public class AlarmBridge {
         AlarmScheduler.scheduleAll(c);
     }
 
+    /** Assunzioni fatte dalla schermata della sveglia, da applicare nell'app (e poi cancellate). */
+    @JavascriptInterface
+    public String takePending() {
+        return AlarmScheduler.takePending(c);
+    }
+
+    @JavascriptInterface
+    public boolean hasPending() {
+        return AlarmScheduler.hasPending(c);
+    }
+
     /** "ok", oppure il permesso che manca: "notifiche", "esatti", "schermo". */
     @JavascriptInterface
     public String status() {
