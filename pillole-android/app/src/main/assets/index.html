@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{margin:0} [hidden]{display:none!important}</style>
+<title>Le mie pillole</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&display=swap">
+<style>
+/* Layout: una colonna stretta da telefono; lista "blister" con l'orario grande a sinistra, pannello impostazioni che scende dall'ingranaggio */
+:root{
+  --bg:#f3f6f5; --surface:#ffffff; --fg:#14211d; --muted:#5b6b66; --line:#d9e2df;
+  --accent:#0f6b54; --accent-soft:#e1f0eb; --on-accent:#ffffff;
+  --late:#b3261e; --late-soft:#fbe9e7; --done:#6d7b77; --done-soft:#eef1f0; --warn:#8a5a00; --warn-soft:#fdf3dc;
+  /* colori predefiniti per categoria: riquadro, sfondo nome, nome, orario */
+  --k1-card:#e6f4ef; --k1-namebg:#c4e6d9; --k1-name:#0d4a3a; --k1-time:#0f6b54;
+  --k2-card:#e7effa; --k2-namebg:#c9dbf3; --k2-name:#183c6b; --k2-time:#1f4f8f;
+  --k3-card:#fbf1df; --k3-namebg:#f3dcae; --k3-name:#5e3d00; --k3-time:#8a5a00;
+  --k4-card:#f0eafa; --k4-namebg:#dccdf3; --k4-name:#42246e; --k4-time:#5a3394;
+  --k5-card:#fbe9ee; --k5-namebg:#f3c8d4; --k5-name:#6b1c33; --k5-time:#9a2c4b;
+  --display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1715; --surface:#17221f; --fg:#e6efec; --muted:#93a39e; --line:#2a3834;
+  --accent:#5fcfae; --accent-soft:#1d3a32; --on-accent:#08201a;
+  --late:#ff8a80; --late-soft:#3a1c1a; --done:#8e9c98; --done-soft:#1c2624; --warn:#f2c46b; --warn-soft:#3a2f17;
+  --k1-card:#142a24; --k1-namebg:#1f4a3d; --k1-name:#c8f0e2; --k1-time:#6fd8b6;
+  --k2-card:#15212f; --k2-namebg:#213a5a; --k2-name:#cfe0f7; --k2-time:#8ab6f0;
+  --k3-card:#2a2214; --k3-namebg:#4a3a1c; --k3-name:#f6e2b8; --k3-time:#f0c46b;
+  --k4-card:#221a30; --k4-namebg:#3a2a57; --k4-name:#e2d6f7; --k4-time:#b89af0;
+  --k5-card:#2c171d; --k5-namebg:#52283a; --k5-name:#f7d3dd; --k5-time:#f08ca8; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1715; --surface:#17221f; --fg:#e6efec; --muted:#93a39e; --line:#2a3834;
+  --accent:#5fcfae; --accent-soft:#1d3a32; --on-accent:#08201a;
+  --late:#ff8a80; --late-soft:#3a1c1a; --done:#8e9c98; --done-soft:#1c2624; --warn:#f2c46b; --warn-soft:#3a2f17;
+  --k1-card:#142a24; --k1-namebg:#1f4a3d; --k1-name:#c8f0e2; --k1-time:#6fd8b6;
+  --k2-card:#15212f; --k2-namebg:#213a5a; --k2-name:#cfe0f7; --k2-time:#8ab6f0;
+  --k3-card:#2a2214; --k3-namebg:#4a3a1c; --k3-name:#f6e2b8; --k3-time:#f0c46b;
+  --k4-card:#221a30; --k4-namebg:#3a2a57; --k4-name:#e2d6f7; --k4-time:#b89af0;
+  --k5-card:#2c171d; --k5-namebg:#52283a; --k5-name:#f7d3dd; --k5-time:#f08ca8; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.45}
+.wrap{max-width:560px;margin:0 auto;padding-inline:16px;padding-block:12px 40px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:8px 14px;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);z-index:5}
+h1{font-family:var(--display);font-size:1.6rem;margin:0;letter-spacing:-.01em}
+.date{color:var(--muted);font-size:.9rem;margin:2px 0 0}
+.gear{width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--fg);display:grid;place-items:center;cursor:pointer;flex:none}
+.gear svg{transition:transform .35s ease}
+.gear[aria-expanded="true"] svg{transform:rotate(90deg)}
+button{font:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* pannello impostazioni */
+.panel{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s ease, opacity .3s ease;opacity:0}
+.panel.open{grid-template-rows:1fr;opacity:1}
+.panel>div{overflow:hidden}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:14px;margin-bottom:16px}
+.card h2{font-family:var(--display);font-size:1.1rem;margin:0}
+.field{display:grid;gap:6px;min-width:0}
+.field label,.lbl{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
+input,select{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;min-height:46px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cats{display:grid;gap:8px}
+.cat{display:grid;grid-template-columns:1fr 92px auto;align-items:center;gap:10px}
+.cat span:last-child{color:var(--muted);font-size:.9rem}
+.cat input{text-align:center;font-variant-numeric:tabular-nums}
+.hint{font-size:.85rem;color:var(--muted);margin:0}
+.primary{background:var(--accent);color:var(--on-accent);border:0;border-radius:12px;min-height:50px;font-weight:700;cursor:pointer}
+.ghost{background:transparent;border:1px solid var(--line);color:var(--fg);border-radius:10px;min-height:42px;padding:0 14px;cursor:pointer}
+.danger{color:var(--late);border-color:var(--late)}
+.err{color:var(--late);font-size:.9rem;margin:0}
+
+/* allarme */
+.alarm{background:var(--late-soft);border:2px solid var(--late);border-radius:14px;padding:14px 16px;margin-bottom:16px;display:grid;gap:10px}
+.alarm strong{font-family:var(--display);font-size:1.15rem}
+.alarm .acts{display:flex;gap:10px;flex-wrap:wrap}
+.alarm .primary{flex:1;min-width:140px;background:var(--late);color:var(--surface)}
+.notice{background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:10px 14px;font-size:.9rem;margin-bottom:12px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+
+/* lista */
+.section-lbl{margin:18px 0 8px}
+ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.pill{background:var(--c-card, var(--surface));border:1px solid var(--line);border-radius:14px;padding:12px 12px 12px 14px;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center}
+.timecol{display:grid;gap:4px;justify-items:stretch;text-align:center;min-width:4.6ch}
+.timecol .chip{padding:2px 4px;white-space:nowrap}
+.time{font-family:var(--display);font-weight:700;font-size:1.7rem;font-variant-numeric:tabular-nums;line-height:1;color:var(--c-time, var(--fg))}
+.time.struck{text-decoration:line-through;text-decoration-thickness:2px;opacity:.75}
+.actual{font-family:var(--display);font-weight:400;font-size:1.25rem;font-variant-numeric:tabular-nums;line-height:1;color:var(--c-time, var(--fg))}
+.info{min-width:0;display:grid;gap:6px;justify-items:start}
+.name{font-weight:700;font-size:1.05rem;overflow-wrap:anywhere;color:var(--c-name, var(--fg));background:var(--c-namebg, var(--accent-soft));border-radius:10px;padding:4px 12px}
+.pill.cat-1{--c-card:var(--k1-card);--c-namebg:var(--k1-namebg);--c-name:var(--k1-name);--c-time:var(--k1-time);--c-border:var(--k1-namebg)}
+.pill.cat-2{--c-card:var(--k2-card);--c-namebg:var(--k2-namebg);--c-name:var(--k2-name);--c-time:var(--k2-time);--c-border:var(--k2-namebg)}
+.pill.cat-3{--c-card:var(--k3-card);--c-namebg:var(--k3-namebg);--c-name:var(--k3-name);--c-time:var(--k3-time);--c-border:var(--k3-namebg)}
+.pill.cat-4{--c-card:var(--k4-card);--c-namebg:var(--k4-namebg);--c-name:var(--k4-name);--c-time:var(--k4-time);--c-border:var(--k4-namebg)}
+.pill.cat-5{--c-card:var(--k5-card);--c-namebg:var(--k5-namebg);--c-name:var(--k5-name);--c-time:var(--k5-time);--c-border:var(--k5-namebg)}
+li.pill{border:2px solid var(--c-border, var(--line))}
+.pill.is-done{opacity:.8}
+.cattabs{display:flex;flex-wrap:wrap;gap:8px}
+.cattab{border:2px solid transparent;border-radius:999px;padding:6px 14px;font-weight:700;cursor:pointer;background:var(--c-card);color:var(--c-name)}
+.cattab[aria-pressed="true"]{border-color:var(--c-time)}
+.colors{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.color{display:flex;align-items:center;gap:10px;min-width:0}
+.color input{width:46px;height:40px;padding:2px;flex:none;cursor:pointer}
+.color label{font-size:.9rem}
+.meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.82rem;color:var(--muted)}
+.chip{border-radius:999px;padding:2px 9px;font-weight:700;font-size:.78rem;background:var(--accent-soft);color:var(--accent)}
+.chip.late{background:var(--c-duebg, var(--late-soft));color:var(--c-due, var(--late))}
+.chip.moved{background:var(--warn-soft);color:var(--warn)}
+.chip.ex{background:var(--done-soft);color:var(--done)}
+.acts{display:flex;gap:6px;align-items:center}
+.take{min-height:46px;min-width:96px;border-radius:12px;border:0;font-weight:700;cursor:pointer;background:var(--accent);color:var(--on-accent)}
+.take.undo{background:var(--done-soft);color:var(--fg);border:1px solid var(--line)}
+.del{width:40px;height:46px;border:0;background:transparent;color:var(--muted);border-radius:10px;cursor:pointer;display:grid;place-items:center}
+.del.confirm{width:auto;padding:0 10px;background:var(--late);color:var(--surface);font-weight:700;font-size:.85rem}
+.pill.is-done{background:var(--c-card, var(--done-soft))}
+.empty{text-align:center;color:var(--muted);padding:32px 12px;border:1px dashed var(--line);border-radius:14px}
+@media (max-width:420px){.pill{grid-template-columns:auto 1fr;}.pill .acts{grid-column:1/-1;justify-content:flex-end}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Le mie pillole</h1>
+      <p class="date" id="today"></p>
+    </div>
+    <button class="gear" id="gear" aria-expanded="false" aria-controls="panel" aria-label="Impostazioni">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </header>
+
+  <section class="panel" id="panel" aria-label="Impostazioni">
+    <div>
+      <form class="card" id="form" novalidate>
+        <h2>Aggiungi pillola</h2>
+        <div class="field"><label for="f-name">Nome pillola</label><input id="f-name" autocomplete="off" placeholder="es. Levodopa 100 mg"></div>
+        <div class="row2">
+          <div class="field"><label for="f-time">Orario</label><input id="f-time" type="time"></div>
+          <div class="field"><label for="f-cat">Categoria</label><select id="f-cat"></select></div>
+        </div>
+        <p class="err" id="f-err" hidden></p>
+        <button class="primary" type="submit">Aggiungi</button>
+      </form>
+      <div class="card">
+        <h2>Intervalli per categoria</h2>
+        <p class="hint">Dopo un'assunzione, le pillole successive della stessa categoria slittano a orario di assunzione + intervallo. Con 0 ore slittano dello stesso ritardo.</p>
+        <div class="cats" id="cats"></div>
+      </div>
+      <div class="card">
+        <h2>Colori per categoria</h2>
+        <p class="hint">Scegli la categoria, poi i suoi colori. Tutte le pillole di quella categoria li useranno.</p>
+        <div class="cattabs" id="cattabs"></div>
+        <div class="colors" id="colors"></div>
+        <button class="ghost" id="colors-reset" type="button">Ripristina colori di questa categoria</button>
+      </div>
+      <div class="card" id="native" hidden>
+        <h2>Sveglie del telefono</h2>
+        <p class="hint" id="native-status"></p>
+        <button class="primary" id="native-fix" type="button" hidden>Concedi il permesso</button>
+        <button class="ghost" id="native-test" type="button">Prova la sveglia (suona tra 10 secondi)</button>
+        <button class="ghost" id="native-batt" type="button">Togli le restrizioni della batteria</button>
+      </div>
+      <div class="card">
+        <h2>Dati</h2>
+        <p class="hint">Ogni notte dopo la mezzanotte tutti gli orari e gli stati tornano come programmati.</p>
+        <button class="ghost danger" id="reset" type="button">Cancella tutti i dati</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="alarm"></div>
+  <div id="notices"></div>
+  <div id="list"></div>
+</div>
+
+<script>
+// ===== SVEGLIE ANDROID: messaggi =====
+var NATIVE_MSG = {
+  ok: 'Sveglie attive: suonano all\'orario anche a telefono bloccato o con l\'app chiusa.',
+  notifiche: 'Le notifiche dell\'app sono disattivate: senza notifiche le sveglie non suonano.',
+  esatti: 'Manca il permesso per le sveglie all\'orario esatto: le sveglie potrebbero suonare in ritardo.',
+  schermo: 'Manca il permesso di mostrare la sveglia a tutto schermo con il telefono bloccato.',
+};
+// ===== LOGIC START =====
+const pad = n => String(n).padStart(2, '0');
+const toMin = t => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
+const fmt = m => { const x = ((Math.round(m) % 1440) + 1440) % 1440; return pad(Math.floor(x / 60)) + ':' + pad(x % 60); };
+const dayKey = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+
+// Orario previsto (in minuti dalla mezzanotte) di ogni pillola non assunta.
+// Per categoria, in ordine di orario programmato: l'ultima pillola assunta fa da "ancora".
+// Le successive non assunte vanno ad ancora + k*intervallo (k = 1, 2, ...);
+// con intervallo 0 slittano dello stesso ritardo dell'ancora. Quelle prima dell'ancora restano invariate.
+function computeTimes(pills, categories) {
+  const intervalOf = name => { const c = categories.find(c => c.name === name); return c ? Number(c.interval) || 0 : 0; };
+  const out = {};
+  const byCat = {};
+  pills.forEach(p => { (byCat[p.category] = byCat[p.category] || []).push(p); });
+  Object.keys(byCat).forEach(cat => {
+    const list = byCat[cat].slice().sort((a, b) => toMin(a.scheduledTime) - toMin(b.scheduledTime) || a.id - b.id);
+    const iv = intervalOf(cat) * 60;
+    let anchor = null, delay = 0, k = 0;
+    list.forEach(p => {
+      const s = toMin(p.scheduledTime);
+      if (p.taken) { anchor = toMin(p.takenTime); delay = anchor - s; k = 0; out[p.id] = s; return; }
+      if (anchor === null) { out[p.id] = s; return; }
+      k++;
+      out[p.id] = iv > 0 ? anchor + k * iv : s + delay;
+    });
+  });
+  return out;
+}
+
+function sortPills(pills, times) {
+  return pills.slice().sort((a, b) => {
+    if (a.taken !== b.taken) return a.taken ? 1 : -1;
+    if (a.taken) return toMin(a.takenTime) - toMin(b.takenTime);
+    return times[a.id] - times[b.id] || a.id - b.id;
+  });
+}
+
+function dailyReset(state, today) {
+  if (state.day === today) return state;
+  return { ...state, day: today, alarmed: [], pills: state.pills.map(p => ({ ...p, taken: false, takenTime: null, dueTime: null })) };
+}
+// ===== LOGIC END =====
+
+const KEY = 'pillole.v10';
+const defaultCats = () => [1, 2, 3, 4, 5].map(i => ({ name: 'Cat. ' + i, interval: 0 }));
+const examples = () => [
+  { id: 1, name: 'Esempio · Pillola mattino', scheduledTime: '07:00', category: 'Cat. 1', taken: false, takenTime: null, example: true },
+  { id: 2, name: 'Esempio · Pillola pranzo', scheduledTime: '12:00', category: 'Cat. 1', taken: false, takenTime: null, example: true },
+  { id: 3, name: 'Esempio · Pillola pomeriggio', scheduledTime: '17:00', category: 'Cat. 1', taken: false, takenTime: null, example: true },
+];
+
+function load() {
+  try { const raw = localStorage.getItem(KEY); if (raw) return JSON.parse(raw); } catch (e) {}
+  const cats = defaultCats(); cats[0].interval = 5;
+  return { pills: examples(), categories: cats, day: dayKey(new Date()), alarmed: [] };
+}
+let state = load();
+delete state.colors;
+state.catColors = state.catColors || {};
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} syncNative(); }
+
+// --- colori per categoria (non impostato = colore predefinito della categoria)
+const COLOR_FIELDS = [
+  { key: 'time', label: 'Orario', token: n => `--k${n}-time` },
+  { key: 'name', label: 'Nome farmaco', token: n => `--k${n}-name` },
+  { key: 'namebg', label: 'Sfondo nome', token: n => `--k${n}-namebg` },
+  { key: 'card', label: 'Sfondo riquadro', token: n => `--k${n}-card` },
+  { key: 'border', label: 'Bordo riquadro', token: n => `--k${n}-namebg` },
+  { key: 'duebg', label: 'Sfondo "da assumere"', token: () => '--late-soft' },
+  { key: 'due', label: 'Testo "da assumere"', token: () => '--late' },
+];
+let colorCat = 'Cat. 1';
+const catNum = name => Math.max(1, state.categories.findIndex(c => c.name === name) + 1);
+const catStyle = name => {
+  const c = state.catColors[name] || {};
+  return Object.keys(c).map(k => `--c-${k}:${c[k]}`).join(';');
+};
+function renderColors() {
+  const cs = getComputedStyle(document.documentElement);
+  const n = catNum(colorCat), saved = state.catColors[colorCat] || {};
+  document.getElementById('cattabs').innerHTML = state.categories.map(c =>
+    `<button type="button" class="pill cattab cat-${catNum(c.name)}" style="${catStyle(c.name)}" data-cat="${esc(c.name)}" aria-pressed="${c.name === colorCat}">${esc(c.name)}</button>`).join('');
+  document.getElementById('colors').innerHTML = COLOR_FIELDS.map(f => {
+    const v = saved[f.key] || cs.getPropertyValue(f.token(n)).trim() || '#000000';
+    return `<div class="color"><input type="color" id="col-${f.key}" data-key="${f.key}" value="${v}"><label for="col-${f.key}">${f.label}</label></div>`;
+  }).join('');
+}
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
+const nowStr = () => fmt(nowMin());
+
+// --- impostazioni: mostra/nascondi
+$('gear').addEventListener('click', () => {
+  const open = !$('panel').classList.contains('open');
+  $('panel').classList.toggle('open', open);
+  $('gear').setAttribute('aria-expanded', String(open));
+  if (open) setTimeout(() => $('f-name').focus(), 250);
+});
+
+function renderSettings() {
+  $('f-cat').innerHTML = state.categories.map(c => `<option>${esc(c.name)}</option>`).join('');
+  $('cats').innerHTML = state.categories.map((c, i) => `
+    <div class="cat"><label for="iv-${i}">${esc(c.name)}</label>
+    <input id="iv-${i}" data-i="${i}" type="number" min="0" max="24" step="0.5" inputmode="decimal" value="${c.interval}">
+    <span>ore</span></div>`).join('');
+}
+$('cats').addEventListener('input', e => {
+  const i = e.target.dataset.i; if (i === undefined) return;
+  const v = parseFloat(e.target.value);
+  state.categories[i].interval = isNaN(v) || v < 0 ? 0 : v;
+  save(); render();
+});
+
+$('colors').addEventListener('input', e => {
+  const k = e.target.dataset.key; if (!k) return;
+  (state.catColors[colorCat] = state.catColors[colorCat] || {})[k] = e.target.value;
+  save(); render();
+  const tab = document.querySelector(`.cattab[data-cat="${colorCat}"]`); if (tab) tab.setAttribute('style', catStyle(colorCat));
+});
+$('cattabs').addEventListener('click', e => {
+  const b = e.target.closest('[data-cat]'); if (!b) return;
+  colorCat = b.dataset.cat; renderColors();
+});
+$('colors-reset').addEventListener('click', () => { delete state.catColors[colorCat]; renderColors(); save(); render(); });
+
+$('form').addEventListener('submit', e => {
+  e.preventDefault();
+  const name = $('f-name').value.trim(), time = $('f-time').value, cat = $('f-cat').value;
+  const err = !name ? 'Scrivi il nome della pillola.' : !time ? 'Scegli l\'orario di assunzione.' : '';
+  $('f-err').textContent = err; $('f-err').hidden = !err;
+  if (err) return;
+  state.pills.push({ id: Date.now(), name, scheduledTime: time, category: cat, taken: false, takenTime: null });
+  save(); render();
+  $('f-name').value = ''; $('f-time').value = ''; $('f-name').focus();
+});
+
+// conferma in pagina (i popup del browser non sono disponibili)
+let pendingConfirm = null;
+function armConfirm(key) { pendingConfirm = key; render(); setTimeout(() => { if (pendingConfirm === key) { pendingConfirm = null; render(); } }, 4000); }
+
+$('reset').addEventListener('click', () => {
+  if (pendingConfirm !== 'reset') { pendingConfirm = 'reset'; $('reset').textContent = 'Tocca di nuovo per confermare'; setTimeout(() => { if (pendingConfirm === 'reset') { pendingConfirm = null; $('reset').textContent = 'Cancella tutti i dati'; } }, 4000); return; }
+  pendingConfirm = null; $('reset').textContent = 'Cancella tutti i dati';
+  state = { pills: [], categories: defaultCats(), day: dayKey(new Date()), alarmed: [] };
+  stopAlarm(); save(); renderSettings(); render();
+});
+
+function toggleTake(id) {
+  const p = state.pills.find(p => p.id === id); if (!p) return;
+  if (p.taken) { p.taken = false; p.takenTime = null; p.dueTime = null; }
+  else { p.dueTime = fmt(computeTimes(state.pills, state.categories)[p.id]); p.taken = true; p.takenTime = nowStr(); }
+  ringing = ringing.filter(r => r !== id);
+  if (!ringing.length) stopSound();
+  save(); render();
+}
+
+$('list').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const id = Number(b.dataset.id);
+  if (b.dataset.act === 'take') toggleTake(id);
+  if (b.dataset.act === 'del') {
+    if (pendingConfirm !== 'del' + id) return armConfirm('del' + id);
+    pendingConfirm = null;
+    state.pills = state.pills.filter(p => p.id !== id);
+    ringing = ringing.filter(r => r !== id);
+    save(); render();
+  }
+});
+$('notices').addEventListener('click', e => {
+  if (e.target.dataset.act === 'fix') { AndroidAlarm.openSettings(nativeStatus()); return; }
+  if (e.target.dataset.act === 'clear-ex') { state.pills = state.pills.filter(p => !p.example); save(); render(); }
+});
+
+function render() {
+  const times = computeTimes(state.pills, state.categories);
+  const sorted = sortPills(state.pills, times);
+  const n = nowMin();
+  const todo = sorted.filter(p => !p.taken), done = sorted.filter(p => p.taken);
+
+  const item = p => {
+    const eff = times[p.id], sched = toMin(p.scheduledTime);
+    const late = !p.taken && eff <= n;
+    const moved = !p.taken && eff !== sched;
+    const due = p.taken ? (p.dueTime || p.scheduledTime) : fmt(eff);
+    const confirming = pendingConfirm === 'del' + p.id;
+    const chips = [];
+    if (p.example) chips.push('<span class="chip ex">esempio</span>');
+    if (!p.taken && moved) chips.push(`<span class="chip moved">spostata da ${p.scheduledTime}${eff >= 1440 ? ' · domani' : ''}</span>`);
+    return `<li class="pill cat-${catNum(p.category)} ${p.taken ? 'is-done' : ''} ${late ? 'is-late' : ''}" style="${catStyle(p.category)}">
+      <div class="timecol">
+        <div class="time ${p.taken ? 'struck' : ''}">${due}</div>
+        ${p.taken ? `<div class="actual">${p.takenTime}</div>` : ''}
+        ${late ? '<span class="chip late">da assumere</span>' : ''}
+      </div>
+      <div class="info"><div class="name">${esc(p.name)}</div>${chips.length ? `<div class="meta">${chips.join('')}</div>` : ''}</div>
+      <div class="acts">
+        <button class="take ${p.taken ? 'undo' : ''}" data-act="take" data-id="${p.id}">${p.taken ? 'Annulla' : 'Assumi'}</button>
+        <button class="del ${confirming ? 'confirm' : ''}" data-act="del" data-id="${p.id}" aria-label="Elimina ${esc(p.name)}">${confirming ? 'Elimina?' :
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>'}</button>
+      </div></li>`;
+  };
+
+  let html = '';
+  if (!state.pills.length) html = '<p class="empty">Nessuna pillola. Tocca l\'ingranaggio in alto a destra per aggiungere la prima.</p>';
+  else {
+    html += `<p class="lbl section-lbl">Da assumere · ${todo.length}</p>`;
+    html += todo.length ? `<ul>${todo.map(item).join('')}</ul>` : '<p class="empty">Tutte assunte per oggi.</p>';
+    if (done.length) html += `<p class="lbl section-lbl">Assunte · ${done.length}</p><ul>${done.map(item).join('')}</ul>`;
+  }
+  $('list').innerHTML = html;
+
+  let notes = '';
+  if (state.pills.some(p => p.example)) notes += `<div class="notice"><span>Queste sono pillole di esempio (Cat. 1, intervallo 5 ore).</span><button class="ghost" data-act="clear-ex">Rimuovi esempi</button></div>`;
+  if (window.AndroidAlarm && nativeStatus() !== 'ok') notes += `<div class="notice"><span>${NATIVE_MSG[nativeStatus()]}</span><button class="ghost" data-act="fix">Sistema ora</button></div>`;
+  if (!audioReady) notes += `<div class="notice"><span>Tocca un punto qualsiasi della pagina per attivare il suono dell'allarme.</span></div>`;
+  $('notices').innerHTML = notes;
+
+  const r = ringing.map(id => state.pills.find(p => p.id === id)).filter(Boolean);
+  $('alarm').innerHTML = r.length ? `<div class="alarm" role="alert">
+      <strong>È ora di prendere ${esc(r[0].name)}</strong>
+      <span>Prevista alle ${fmt(times[r[0].id])}${r.length > 1 ? ` · altre ${r.length - 1} in attesa` : ''}</span>
+      <div class="acts"><button class="primary" id="al-take">Assumi ora</button><button class="ghost" id="al-mute">Silenzia</button></div></div>` : '';
+  if (r.length) {
+    $('al-take').onclick = () => toggleTake(r[0].id);
+    $('al-mute').onclick = () => { stopAlarm(); render(); };
+  }
+  $('today').textContent = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+// --- allarme sonoro
+let audioCtx = null, audioReady = !!window.AndroidAlarm, ringing = [], soundTimer = null, soundStop = null;
+document.addEventListener('pointerdown', () => {
+  if (audioReady) return;
+  try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); audioReady = true; render(); } catch (e) {}
+}, { capture: true });
+function beep() {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  [0, 0.25, 0.5].forEach(o => {
+    const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
+    osc.frequency.value = 880; osc.type = 'sine';
+    g.gain.setValueAtTime(0.0001, t + o); g.gain.exponentialRampToValueAtTime(0.4, t + o + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + o + 0.18);
+    osc.connect(g).connect(audioCtx.destination); osc.start(t + o); osc.stop(t + o + 0.2);
+  });
+}
+function startSound() {
+  if (window.AndroidAlarm || soundTimer) return;
+  beep(); soundTimer = setInterval(beep, 2000);
+  soundStop = setTimeout(stopSound, 90000);
+  try { navigator.vibrate && navigator.vibrate([400, 200, 400]); } catch (e) {}
+}
+function stopSound() { clearInterval(soundTimer); clearTimeout(soundStop); soundTimer = null; }
+function stopAlarm() { ringing = []; stopSound(); }
+
+function tick() {
+  const today = dayKey(new Date());
+  if (state.day !== today) { state = dailyReset(state, today); stopAlarm(); save(); }
+  const times = computeTimes(state.pills, state.categories);
+  const n = nowMin();
+  let fired = false;
+  state.pills.forEach(p => {
+    if (p.taken || p.example) return;
+    const eff = times[p.id];
+    const key = p.id + '@' + fmt(eff);
+    if (eff <= n && n - eff < 60 && !state.alarmed.includes(key)) {
+      state.alarmed.push(key);
+      if (!ringing.includes(p.id)) ringing.push(p.id);
+      fired = true;
+      try { if (window.Notification && Notification.permission === 'granted') new Notification('È ora di prendere ' + p.name); } catch (e) {}
+    }
+  });
+  if (fired) { save(); startSound(); }
+  render();
+}
+
+state = dailyReset(state, dayKey(new Date()));
+// le pillole già passate all'apertura non suonano: solo quelle che scadono da qui in avanti
+{ const t = computeTimes(state.pills, state.categories), n = nowMin();
+  state.pills.forEach(p => { const k = p.id + '@' + fmt(t[p.id]); if (!p.taken && t[p.id] < n && !state.alarmed.includes(k)) state.alarmed.push(k); }); }
+save(); renderSettings(); renderColors(); tick();
+setInterval(tick, 15000);
+
+// ===== SVEGLIE ANDROID =====
+function nativeStatus() { try { return AndroidAlarm.status(); } catch (e) { return 'ok'; } }
+function syncNative() {
+  if (!window.AndroidAlarm) return;
+  try {
+    const t = computeTimes(state.pills, state.categories);
+    const real = state.pills.filter(p => !p.example);
+    const today = {};
+    real.forEach(p => { if (!p.taken) today[String(p.id)] = t[p.id]; });
+    AndroidAlarm.setPlan(JSON.stringify({
+      date: state.day,
+      today,
+      base: real.map(p => ({ id: String(p.id), name: p.name, minute: toMin(p.scheduledTime) })),
+    }));
+  } catch (e) {}
+}
+function renderNative() {
+  const box = document.getElementById('native');
+  if (!window.AndroidAlarm) { box.hidden = true; return; }
+  box.hidden = false;
+  const s = nativeStatus();
+  document.getElementById('native-status').textContent = NATIVE_MSG[s] || NATIVE_MSG.ok;
+  document.getElementById('native-fix').hidden = s === 'ok';
+}
+if (window.AndroidAlarm) {
+  document.getElementById('native-fix').addEventListener('click', () => AndroidAlarm.openSettings(nativeStatus()));
+  document.getElementById('native-test').addEventListener('click', e => { AndroidAlarm.test(); e.target.textContent = 'Sveglia di prova tra 10 secondi: blocca pure il telefono'; });
+  document.getElementById('native-batt').addEventListener('click', () => AndroidAlarm.openSettings('batteria'));
+}
+window.onNativeResume = () => { renderNative(); tick(); };
+renderNative();
+syncNative();
+
+</script>
+</body>
+</html>

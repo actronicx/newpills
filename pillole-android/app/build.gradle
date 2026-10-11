@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'it.davide.pillole'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'it.davide.pillole'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    // Chiave di firma fissa: così le versioni future si installano sopra questa
+    // senza perdere le pillole salvate.
+    signingConfigs {
+        debug {
+            storeFile file('pillole.keystore')
+            storePassword 'pillole123'
+            keyAlias 'pillole'
+            keyPassword 'pillole123'
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}
